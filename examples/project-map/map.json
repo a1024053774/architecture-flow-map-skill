@@ -142,7 +142,7 @@
       "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 96, "symbol": "map_path.read_text" } ] } },
     { "id": "e-mapdir-parse", "from": "mapdir", "to": "mapcheck.parse", "kind": "data", "label": "读取 tickets/*.md",
       "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 43, "symbol": "path.read_text" } ] } },
-    { "id": "e-status-docs", "from": "cli.status", "to": "doccheck.check_docs", "kind": "sync", "label": "传入 MAP.md 原文做活文档检查",
+    { "id": "e-status-docs", "from": "cli.status", "to": "doccheck.check_docs", "kind": "sync", "label": "活文档检查", "detail": "cmd_status 把 check_map 读到的 MAP.md 原文传给 check_docs，不再重新读文件。",
       "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 229, "symbol": "check_docs(root, text)" } ] } },
     { "id": "e-docs-rows", "from": "doccheck.check_docs", "to": "doccheck.rows", "kind": "sync", "label": "解析 Living docs 表",
       "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 194, "symbol": "living_docs(text)" } ] } },
@@ -152,7 +152,7 @@
       "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 207, "symbol": "stale_git if use_git else stale_mtime" } ] } },
     { "id": "e-docs-probe", "from": "doccheck.check_docs", "to": "git", "kind": "sync", "label": "判断是否 git 工作区",
       "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 193, "symbol": "rev-parse\", \"--is-inside-work-tree" } ] } },
-    { "id": "e-stalegit-git", "from": "doccheck.git", "to": "git", "kind": "sync", "label": "ls-files / log / merge-base / status",
+    { "id": "e-stalegit-git", "from": "doccheck.git", "to": "git", "kind": "sync", "label": "查询提交与工作区", "detail": "依次调用 git ls-files、log、rev-parse、merge-base、status。",
       "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 155, "symbol": "ls-files" }, { "path": "project-map/scripts/project_map.py", "line": 166, "symbol": "\"log\", \"--format=\", \"--name-only\"" } ] } },
     { "id": "e-ws-docs", "from": "workspace", "to": "doccheck.check_docs", "kind": "data", "label": "确认活文档文件存在",
       "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 201, "symbol": "doc_path.is_file()" } ] } },
@@ -185,7 +185,7 @@
         { "from": "closed", "to": "superseded", "by": "Agent 手改", "note": "新票 supersedes 旧票并关闭后" }
       ],
       "relations": [ { "to": "map", "label": "关闭后在 Decisions so far 出现一次" } ],
-      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 17, "symbol": "STATUSES" }, { "path": "project-map/scripts/project_map.py", "line": 120, "symbol": "closed without a Resolution" }, { "path": "project-map/SKILL.md", "line": 56, "symbol": "supersedes" } ] }
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 17, "symbol": "STATUSES" }, { "path": "project-map/scripts/project_map.py", "line": 121, "symbol": "closed without a Resolution" }, { "path": "project-map/SKILL.md", "line": 56, "symbol": "supersedes" } ] }
     },
     {
       "id": "livingdoc", "label": "活文档登记", "storedIn": "MAP.md 的 Living docs 表（一行一份）",
@@ -303,7 +303,9 @@
       "doc": { "path": "project-map/references/formats.md", "line": 7, "symbol": "in this order" },
       "claim": "MAP.md 的六个必需章节要按规定顺序排列",
       "actual": "check_map 只检查每个章节是否存在，不检查顺序；乱序的 MAP.md 也能通过 status",
-      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 101, "symbol": "for name in SECTIONS" } ] }
+      "impact": "低：只影响可读性，不影响票据或 frontier 的计算",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 101, "symbol": "for name in SECTIONS" } ],
+        "runs": [ { "command": "project_map.py init，把 MAP.md 的六个章节倒序后运行 project_map.py status", "observed": "Problems (0)，退出码 0", "date": "2026-10-01" } ] }
     },
     {
       "doc": { "path": "project-map/references/formats.md", "line": 28, "symbol": "**Verified**" },

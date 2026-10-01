@@ -25,12 +25,15 @@ Every node, edge, object, step, branch, and drift entry carries an evidence leve
 
 | Level | Meaning | Required |
 | --- | --- | --- |
-| `confirmed` | You read the code or config that does this. | at least one ref |
+| `confirmed` | You read the code or config that does this, or you ran it and saw it happen. | at least one ref or run |
 | `inferred` | Follows from code you read, but no single place states it (for example "nothing else writes this file, so the user must"). | refs plus a `note` stating the basis |
 | `unknown` | Cannot be settled from static reading: runtime config, deployment, traffic, a library's internals you did not open. | `needs`: the evidence that would settle it (a log line, an env value, a trace, a config file in another repo) |
 
-- A ref is `{path, line, symbol}` relative to the repository root; `symbol` is a literal substring found on or within three lines of `line`. Prefer a ref to the function or the line doing the work over a ref to a whole file.
+- A ref is `{path, line, symbol}` relative to the repository root; `symbol` is a literal substring of exactly that line, so take line numbers from `rg -n` or `grep -n`, not from memory. Prefer a ref to the function or the line doing the work over a ref to a whole file.
+- A run is `{command, observed, date}`: a command you executed and what it showed. When a claim can be settled by running something local and harmless (the test suite, a CLI against sample data, a dev server on localhost), run it instead of reasoning about it, and record it. Never run commands that touch production, real accounts, paid services, or data you cannot throw away.
+- Be strict with `confirmed`. Anything that depends on runtime configuration, deployment, concurrency, traffic, or code you did not open is `inferred` or `unknown`, even when the code path you read looks clear. A map whose evidence is almost all `confirmed` deserves a second look before you report it.
 - When documentation and implementation disagree, draw the implementation and record the disagreement in `docDrift`.
+- When a drift entry or open question has consequences beyond a wrong sentence (unpublished data reachable without login, a permission the docs promise but the code never checks, data that can be lost), say so in its `impact` field. The viewer shows impact in red and lists those entries first, and your report leads with them. Report the problem; do not fix it, because this Skill only maps what exists.
 - Never invent a module, call, queue, retry, or failure branch to make the picture complete. When a trace runs out of code you can read, end the step at the last confirmed point and mark what follows `unknown`.
 - Never draw a suggested or planned architecture as the current one. Mention improvements only in your closing message, if at all.
 - Do not point a ref at an unrelated line just because it contains the symbol. If a claim has no support, lower its level or drop it.
@@ -78,7 +81,7 @@ Edge kinds carry direction and meaning:
 - `async`: an event, queue message, scheduled job, or callback; the sender does not wait. Arrow from producer to consumer.
 - `data`: data moving between code and a store or file. Arrow in the direction data moves: store to reader for a read, writer to store for a write.
 
-Give every edge a short label saying what passes or why (`POST /orders`, `jobs.put(order)`, `读取 MAP.md`), not just "calls".
+Give every edge a short label saying what passes or why (`POST /orders`, `jobs.put(order)`, `读取 MAP.md`), not just "calls". Keep it to about ten Chinese characters or twenty Latin ones and put the full sentence in `detail`, which the viewer shows when the edge is clicked; long labels collide on the canvas.
 
 ### 5. Write `map.json`
 
@@ -90,17 +93,19 @@ The format is in [references/map-schema.md](references/map-schema.md). Write the
 python3 <skill-dir>/scripts/build_map.py --root <repo> --data <out>/map.json --out <out>/index.html
 ```
 
-Every `ERROR` names the entry and the problem. Fix it by re-reading the code and correcting the ref or the claim; never edit the generated HTML. A failed build writes nothing, so an earlier good HTML survives. `WARN` lines flag readability budgets (more than 14 overview nodes, more than 12 children); move detail down a level rather than ignoring them. Use `--check` to validate without writing.
+Every `ERROR` names the entry and the problem; for a symbol that is not on its line it also lists the lines where the symbol does occur. Fix it by re-reading the code and correcting the ref or the claim; never edit the generated HTML. A failed build writes nothing, so an earlier good HTML survives. `WARN` lines flag readability budgets (more than 14 overview nodes, more than 12 children, edge labels that are too long); fix them rather than ignoring them. Use `--check` to validate without writing. The `OK` line counts evidence levels; check that the split is honest.
 
 ### 7. Check the result in a browser
 
-Open the HTML with a browser tool when you have one. Some embedded browsers render `file://` pages as static snapshots, so serve the folder over local HTTP (for example `python3 -m http.server --directory <out>`) when clicks do nothing. Check at least:
+Serve the output folder over local HTTP (`python3 -m http.server --directory <out>`); some embedded browsers render `file://` pages as static snapshots that ignore clicks. Open it at 1280x800 and run this in the page, with whatever browser tool you have (Playwright `page.evaluate`, a browser pane's JavaScript tool, DevTools):
 
-- the overview is readable without zooming at the user's screen size;
-- picking each scenario, then Next and Previous, highlights the nodes and edges that step names, and the step text matches;
-- clicking a node shows its role, objects, and code refs; a module with children expands and the breadcrumb returns;
-- zoom, pan, and Reset view work;
-- the "unconfirmed and inferred" and "docs vs. implementation" lists contain what you recorded.
+```js
+await flowMapSelfCheck()
+```
+
+It drives the real controls and compares what the page shows against `map.json`: every step of every scenario (stepper, title, highlighted nodes and edges), every node's details, every module's expansion and breadcrumb, zoom and Reset view. It returns `{ok, failures, metrics}`; `metrics` gives the overview's scale, the rendered text size, the number of edge labels that overlap a label or node, and the evidence counts. Fix every failure. For overlaps, shorten the labels involved or drop edges that add nothing at overview level; if the overview text is under 11px, move nodes into `children`.
+
+Then take one screenshot of the overview and one of a scenario step and look at them: the self-check proves the page matches the data, not that the picture explains the system.
 
 Without a browser tool, say that the interaction checks were not run.
 
@@ -108,11 +113,12 @@ Without a browser tool, say that the interaction checks were not run.
 
 In the user's language, briefly:
 
-1. How the project runs as a whole, in a few sentences.
-2. The 3-5 relationships most worth understanding, each pointing at a node, edge, or scenario.
-3. What remains unconfirmed and the evidence each item needs, and any doc drift.
-4. How to open the map and how to rebuild it after code changes.
-5. Status: `PASS` only when the build passed and the browser checks ran; otherwise `INCOMPLETE` with what was skipped.
+1. Any finding with an `impact`, first.
+2. How the project runs as a whole, in a few sentences.
+3. The 3-5 relationships most worth understanding, each pointing at a node, edge, or scenario.
+4. What remains unconfirmed and the evidence each item needs, and any doc drift.
+5. How to open the map and how to rebuild it after code changes.
+6. Status: `PASS` only when the build passed and `flowMapSelfCheck()` returned `ok: true`; otherwise `INCOMPLETE` with what was skipped or still failing.
 
 ## Updating an existing map
 

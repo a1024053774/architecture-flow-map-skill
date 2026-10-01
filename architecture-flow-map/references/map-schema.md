@@ -17,7 +17,7 @@ One JSON object. `build_map.py` validates it and embeds it in `assets/viewer.htm
 | `objects` | no | Business objects (below). |
 | `scenarios` | yes | Step-by-step flows (below). |
 | `docDrift` | no | Places where docs and code disagree (below). |
-| `openQuestions` | no | `[{question, needs, related?}]`; `related` lists node, edge, or object ids. |
+| `openQuestions` | no | `[{question, needs, related?, impact?}]`; `related` lists node, edge, or object ids. |
 
 ## Evidence
 
@@ -25,11 +25,14 @@ Every node, child, edge, object, step, branch, and drift entry has `evidence`:
 
 ```json
 { "level": "confirmed", "refs": [ { "path": "src/orders/api.py", "line": 42, "symbol": "def create_order" } ] }
+{ "level": "confirmed", "runs": [ { "command": "uv run pytest -q", "observed": "90 passed", "date": "2026-10-01" } ] }
 { "level": "inferred",  "refs": [ ... ], "note": "why this follows from the refs" }
 { "level": "unknown",   "needs": "the evidence that would settle it" }
 ```
 
-A ref's `path` is relative to `--root` and must exist. `line` is optional and must be inside the file. `symbol` is optional; when given it must occur in the file, and when `line` is also given it must occur within three lines of it. A directory ref takes neither `line` nor `symbol`.
+A ref's `path` is relative to `--root` and must exist. `line` is optional and must be inside the file. `symbol` is optional; when given it must occur in the file, and when `line` is also given it must occur on that exact line. A directory ref takes neither `line` nor `symbol`.
+
+A run records a command you executed (`command`) and what it showed (`observed`); `date` is optional. `confirmed` needs at least one ref or run; `inferred` needs one of them plus `note`. Runs are shown in the viewer but cannot be re-checked by the build.
 
 ## Nodes
 
@@ -55,6 +58,7 @@ A ref's `path` is relative to `--root` and must exist. `line` is optional and mu
 
 - `from` and `to` may be nodes or children.
 - `kind`: `sync` (caller waits; arrow caller to callee), `async` (event, queue, scheduled job, callback; arrow producer to consumer), `data` (arrow in the direction data moves: store to reader, writer to store).
+- Keep `label` to about ten Chinese characters or twenty Latin ones; longer labels draw a build warning. Put the full sentence in `detail`.
 - Edges whose level is not `confirmed` get a `？` prefix on the canvas and appear in the viewer's "unconfirmed and inferred" list.
 
 ## Objects
@@ -97,7 +101,11 @@ A ref's `path` is relative to `--root` and must exist. `line` is optional and mu
 ## Doc drift
 
 ```json
-{ "doc": { "path": "README.md", "line": 30, "symbol": "retries" }, "claim": "what the doc says", "actual": "what the code does", "evidence": { ... } }
+{ "doc": { "path": "README.md", "line": 30, "symbol": "retries" }, "claim": "what the doc says", "actual": "what the code does", "impact": "optional: the consequence, when it goes beyond a wrong sentence", "evidence": { ... } }
 ```
 
-`doc` is a ref to the documentation; `evidence` points at the implementation.
+`doc` is a ref to the documentation; `evidence` points at the implementation. Entries with `impact` are listed first and shown in red.
+
+## Viewer self-check
+
+`await flowMapSelfCheck()` in the built page returns `{ok, failures, metrics}`. The stable hooks it uses are also usable by other test code: scenario buttons in `.scenario-list`, `#prev` and `#next`, `.stepper .count`, `.step-now h3`, nodes as `.node[data-node=<id>]` (`.hot` when highlighted, `.stub` for outside modules in an expanded view), edges as `g.edge[data-edge="<id> <id>…"]`, `#zin`, `#zout`, `#zfit`, `#crumbs`, and the detail panel `#right`.

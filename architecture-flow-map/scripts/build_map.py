@@ -5,10 +5,11 @@
     python3 build_map.py --root <repo> --data <map.json> --check
 
 Every code reference must resolve: the path exists under --root, the line is inside the file, and
-a given symbol appears in the file (within a few lines of the given line). Every node, edge,
-object, step, and drift entry carries an evidence level; scenario steps may only highlight nodes
-and edges the map defines. On any error nothing is written and the exit code is 1, so a previous
-good HTML is never replaced by a broken one. Warnings (readability budgets) do not fail the build.
+a given symbol appears on exactly that line (or anywhere in the file when no line is given). Every
+node, edge, object, step, and drift entry carries an evidence level; scenario steps may only
+highlight nodes and edges the map defines. On any error nothing is written and the exit code is 1,
+so a previous good HTML is never replaced by a broken one. Warnings (readability budgets, long
+labels) do not fail the build.
 
 The format is documented in ../references/map-schema.md.
 """
@@ -24,9 +25,9 @@ LEVELS = ("confirmed", "inferred", "unknown")
 EDGE_KINDS = ("sync", "async", "data")
 NODE_KINDS = ("actor", "entry", "module", "store", "external", "job", "config", "doc")
 DATA_OPS = ("create", "read", "update", "delete")
-SYMBOL_WINDOW = 3  # lines either side of `line` where `symbol` must appear
 OVERVIEW_BUDGET = 14
 CHILD_BUDGET = 12
+LABEL_BUDGET = 12  # edge label width in CJK characters (Latin counts ~0.55); longer text goes in `detail`
 TEMPLATE = Path(__file__).resolve().parent.parent / "assets" / "viewer.html"
 PLACEHOLDER = "__FLOW_MAP_DATA__"
 
@@ -37,6 +38,7 @@ class Checker:
         self.errors: list[str] = []
         self.warnings: list[str] = []
         self._lines: dict[Path, list[str]] = {}
+        self.levels: dict[str, int] = {}
 
     def err(self, where: str, msg: str) -> None:
         self.errors.append(f"{where}: {msg}")
@@ -68,29 +70,39 @@ class Checker:
             return
         if symbol is None:
             return
+        if line is not None and symbol in lines[line - 1]:
+            return
         hits = [i + 1 for i, text in enumerate(lines) if symbol in text]
         if not hits:
             self.err(where, f"symbol `{symbol}` not found in `{ref['path']}`")
-        elif line is not None and not any(abs(h - line) <= SYMBOL_WINDOW for h in hits):
-            self.err(where, f"symbol `{symbol}` is not near line {line} of `{ref['path']}`; found at {hits[:5]}")
+        elif line is not None:
+            self.err(where, f"symbol `{symbol}` is not on line {line} of `{ref['path']}`; found on {hits[:5]}")
 
     def evidence(self, where: str, ev: object) -> None:
         if not isinstance(ev, dict) or ev.get("level") not in LEVELS:
             self.err(where, f"`evidence.level` must be one of {', '.join(LEVELS)}")
             return
-        refs = ev.get("refs") or []
-        if not isinstance(refs, list):
-            self.err(where, "`evidence.refs` must be a list")
+        refs, runs = ev.get("refs") or [], ev.get("runs") or []
+        if not isinstance(refs, list) or not isinstance(runs, list):
+            self.err(where, "`evidence.refs` and `evidence.runs` must be lists")
             return
         level = ev["level"]
-        if level in ("confirmed", "inferred") and not refs:
-            self.err(where, f"{level} evidence needs at least one ref")
+        self.levels[level] = self.levels.get(level, 0) + 1
+        if level in ("confirmed", "inferred") and not refs and not runs:
+            self.err(where, f"{level} evidence needs at least one ref or run")
+        for i, run in enumerate(runs):
+            if not isinstance(run, dict) or not run.get("command") or not run.get("observed"):
+                self.err(f"{where} run[{i}]", "a run needs `command` and `observed`")
         if level == "inferred" and not ev.get("note"):
             self.err(where, "inferred evidence needs a `note` stating the basis of the inference")
         if level == "unknown" and not ev.get("needs"):
             self.err(where, "unknown evidence needs `needs`: what evidence would settle it")
         for i, ref in enumerate(refs):
             self.ref(f"{where} ref[{i}]", ref)
+
+
+def width(text: str) -> float:
+    return sum(0.55 if ord(ch) < 0x100 else 1 for ch in text)
 
 
 def need(c: Checker, obj: dict, where: str, *fields: str) -> bool:
@@ -153,6 +165,9 @@ def check(data: dict, c: Checker) -> None:
         if edge.get("kind") not in EDGE_KINDS:
             c.err(where, f"`kind` must be one of {', '.join(EDGE_KINDS)}")
         c.evidence(where, edge.get("evidence"))
+        if width(edge.get("label") or "") > LABEL_BUDGET:
+            c.warnings.append(f"{where}: label is wider than {LABEL_BUDGET} CJK characters and will crowd the canvas; "
+                              "keep a few words and move the rest to `detail`")
 
     objects: dict[str, dict] = {}
     obj_ids: set[str] = set()
@@ -256,7 +271,8 @@ def main() -> int:
         return 1
 
     counts = (f"{len(data['nodes'])} overview nodes, {len(data['edges'])} edges, "
-              f"{len(data.get('objects') or [])} objects, {len(data['scenarios'])} scenarios")
+              f"{len(data.get('objects') or [])} objects, {len(data['scenarios'])} scenarios; evidence "
+              + " / ".join(f"{c.levels.get(level, 0)} {level}" for level in LEVELS))
     if args.check:
         print(f"OK {counts}")
         return 0

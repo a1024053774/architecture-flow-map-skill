@@ -44,7 +44,8 @@ p { margin: 0 0 8px; }
 .crumbs button { border: 0; padding: 0; background: none; color: var(--focus); text-decoration: underline; }
 .top .spacer { flex: 1; }
 
-.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; height: calc(100% - 49px); }
+body { display: flex; flex-direction: column; }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; flex: 1; min-height: 0; }
 .side { overflow-y: auto; padding: 14px 16px 24px; background: var(--panel); }
 .left { border-right: 1px solid var(--line); }
 .right { border-left: 1px solid var(--line); }
@@ -106,7 +107,7 @@ details li { margin-bottom: 4px; }
 .node.stub rect { fill: var(--stub); stroke: var(--muted); stroke-dasharray: 3 3; }
 .node.lvl-inferred rect { stroke-dasharray: 6 4; }
 .node.lvl-unknown rect { stroke-dasharray: 2 3; }
-.node text { fill: var(--ink); font-size: 13px; pointer-events: none; }
+.node text { fill: var(--ink); font-size: 14px; pointer-events: none; }
 .node .sub { fill: var(--muted); font-size: 11px; }
 .node .q { fill: var(--hot); font-weight: 700; }
 .node { cursor: pointer; }
@@ -119,7 +120,7 @@ details li { margin-bottom: 4px; }
 .edge.async path.line { stroke: var(--async); stroke-dasharray: 7 5; }
 .edge.data path.line { stroke: var(--data); stroke-dasharray: 2 4; stroke-linecap: round; }
 .edge .label rect { fill: var(--paper); stroke: var(--line); }
-.edge .label text { font-size: 11px; fill: var(--ink); }
+.edge .label text { font-size: 12px; fill: var(--ink); }
 .edge.hot path.line { stroke: var(--hot); stroke-width: 2.8; }
 .edge.hot .label rect { stroke: var(--hot); }
 .edge.selected path.line { stroke: var(--focus); stroke-width: 2.6; }
@@ -130,12 +131,22 @@ details li { margin-bottom: 4px; }
   @keyframes flow { to { stroke-dashoffset: -16; } }
 }
 
-@media (max-width: 1100px) {
-  .layout { grid-template-columns: 280px minmax(0, 1fr); }
-  .right { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: 40vh; }
+.panel-toggle { display: none; }
+.impact { color: var(--hot); font-weight: 600; }
+.runs { list-style: none; padding: 0; margin: 6px 0; font-size: 13px; }
+.runs li { border-left: 2px solid var(--async); padding-left: 8px; margin-bottom: 6px; }
+/* Below 1400px the detail panel becomes a drawer over the canvas so the map keeps its width. */
+@media (max-width: 1400px) and (min-width: 721px) {
+  .layout { grid-template-columns: 280px minmax(0, 1fr); position: relative; }
+  .right { position: absolute; top: 0; right: 0; bottom: 0; width: 380px; z-index: 5; box-shadow: -8px 0 24px rgba(0, 0, 0, .18); }
+  body:not(.drawer-open) .right { display: none; }
+  body.drawer-open .tools { right: 390px; }
+  .panel-toggle { display: inline-block; }
+  .panel-toggle[aria-pressed="true"] { border-color: var(--hot); }
 }
 @media (max-width: 720px) {
-  .layout { display: block; height: auto; }
+  body { display: block; }
+  .layout { display: block; }
   .stage { height: 62vh; }
   .side { border: 0; border-top: 1px solid var(--line); }
   .legend { display: none; }
@@ -148,6 +159,7 @@ details li { margin-bottom: 4px; }
   <span class="meta" id="meta"></span>
   <nav class="crumbs" id="crumbs" aria-label="视图层级"></nav>
   <span class="spacer"></span>
+  <button id="drawer" type="button" class="panel-toggle" aria-pressed="false"></button>
   <button id="theme" type="button"></button>
 </header>
 <main class="layout">
@@ -185,7 +197,7 @@ const STR = {
     objects: "相关业务对象", parent: "所属模块", incoming: "进入的连线", outgoing: "发出的连线", kind: "类型", lane: "所在层", role: "职责",
     summary: "项目如何运转", bizObjects: "业务对象", open: "尚未确认与推断", drift: "文档与实现的差异",
     states: "状态", createdBy: "创建", readBy: "读取", writtenBy: "修改", storedIn: "存放于", relations: "关联",
-    claim: "文档说", actual: "实际实现", needs: "需要的证据", basis: "推断依据", copy: "复制", copied: "已复制",
+    claim: "文档说", actual: "实际实现", impact: "影响", ran: "实测", observed: "结果", panel: "概况与详情", needs: "需要的证据", basis: "推断依据", copy: "复制", copied: "已复制",
     stepTouches: (m) => `本步骤涉及「${m}」内部组件，可展开查看`, expandShort: "展开",
     stub: "外部模块", none: "无", generated: "生成于", commit: "对应提交", template: "这是查看器模板，没有地图数据。请用 build_map.py 生成。",
     levels: { confirmed: "已确认", inferred: "推断", unknown: "待确认" },
@@ -201,7 +213,7 @@ const STR = {
     objects: "Business objects", parent: "Module", incoming: "Incoming", outgoing: "Outgoing", kind: "Kind", lane: "Layer", role: "Responsibility",
     summary: "How the project runs", bizObjects: "Business objects", open: "Unconfirmed and inferred", drift: "Docs vs. implementation",
     states: "States", createdBy: "Created by", readBy: "Read by", writtenBy: "Written by", storedIn: "Stored in", relations: "Relations",
-    claim: "Docs say", actual: "Code does", needs: "Evidence needed", basis: "Basis", copy: "Copy", copied: "Copied",
+    claim: "Docs say", actual: "Code does", impact: "Impact", ran: "Ran", observed: "Observed", panel: "Overview & details", needs: "Evidence needed", basis: "Basis", copy: "Copy", copied: "Copied",
     stepTouches: (m) => `This step happens inside "${m}"`, expandShort: "Expand",
     stub: "Outside module", none: "None", generated: "Generated", commit: "Commit", template: "This is the viewer template with no map data. Build it with build_map.py.",
     levels: { confirmed: "Confirmed", inferred: "Inferred", unknown: "Unconfirmed" },
@@ -276,7 +288,10 @@ function evidenceBlock(ev) {
     h("h2", {}, T.evidence, badge(ev.level)),
     ev.note ? h("p", { class: "note" }, `${T.basis}：${ev.note}`) : null,
     ev.needs ? h("p", { class: "note" }, `${T.needs}：${ev.needs}`) : null,
-    refList(ev.refs));
+    refList(ev.refs),
+    (ev.runs || []).length ? h("ul", { class: "runs" }, ev.runs.map((r) => h("li", {},
+      h("div", {}, `${T.ran}${r.date ? `（${r.date}）` : ""}：`, h("code", {}, r.command)),
+      h("div", {}, `${T.observed}：${r.observed}`)))) : null);
 }
 const link = (id, label) => h("button", { type: "button", class: "linklike", onclick: () => select(objById.has(id) ? "object" : "node", id) }, label || nameOf(id));
 
@@ -330,7 +345,7 @@ function tracksModule(mid) {
   if (after.length) tracks.push({ label: T.stub, ids: after, stub: true });
   return { tracks, edges: aggregate(relevant, mapEnd) };
 }
-const RW = NW + 40, RP = NH + 96;  // vertical orientation: node pitch within a row, row pitch
+const RW = NW + 40, RP = NH + 76;  // vertical orientation: node pitch within a row, row pitch
 function extent(tracks, orient) {
   const most = Math.max(1, ...tracks.map((t) => t.ids.length));
   return orient === "h" ? { w: tracks.length * (NW + GX) - GX, h: HEAD + most * (NH + GY) } : { w: most * RW, h: tracks.length * RP };
@@ -432,9 +447,14 @@ function drawCanvas() {
     const lines = wrap(text, 14), lw = Math.max(...lines.map((l) => [...l].reduce((w, ch) => w + (/[\u0000-\u00ff]/.test(ch) ? 6.2 : 11), 0))) + 10;
     const lh = 16 + (lines.length - 1) * 14;
     // Slide the label along its curve to the first spot that covers no node and no earlier label.
-    const boxAt = (t) => { const [x, y] = bez(r.p, t); return { x: x - lw / 2, y: y - lh / 2, w: lw, h: lh, cx: x, cy: y }; };
+    // If the curve itself offers no clear spot, nudge the label just off the line.
+    const boxAt = (t, dx = 0, dy = 0) => { const [x0, y0] = bez(r.p, t), x = x0 + dx, y = y0 + dy; return { x: x - lw / 2, y: y - lh / 2, w: lw, h: lh, cx: x, cy: y }; };
     const clear = (b) => ![...L.boxes.values(), ...placed].some((o) => overlaps(b, o));
-    const spot = [0.5, 0.38, 0.62, 0.27, 0.73, 0.17, 0.83].map(boxAt).find(clear) || boxAt(0.5);
+    const ts = [0.5, 0.38, 0.62, 0.27, 0.73, 0.17, 0.83];
+    const nudges = [[0, lh + 3], [0, -lh - 3], [lw / 2 + 4, 0], [-lw / 2 - 4, 0]];
+    const spot = ts.map((t) => boxAt(t)).find(clear)
+      || nudges.flatMap(([dx, dy]) => ts.slice(0, 3).map((t) => boxAt(t, dx, dy))).find(clear)
+      || boxAt(0.5);
     placed.push(spot);
     const lg = s("g", { class: cls + " label-wrap" });
     const label = s("g", { class: "label" }, s("rect", { x: spot.x, y: spot.y, width: lw, height: lh, rx: 3 }));
@@ -473,13 +493,18 @@ function drawHint(hot) {
 }
 
 // ---- pan / zoom ----
-const Z = { k: 1, x: 0, y: 0 };
+const Z = { k: 1, x: 0, y: 0 }, MIN_K = 0.85;
 function applyZ() { $("vp").setAttribute("transform", `translate(${Z.x},${Z.y}) scale(${Z.k})`); }
 function fit() {
   const bb = $("vp").getBBox(), r = svg.getBoundingClientRect();
   if (!bb.width || !r.width) return;
-  const pad = 40, k = Math.min((r.width - pad * 2) / bb.width, (r.height - pad * 2 - 40) / bb.height, 1.2);
-  Z.k = Math.max(k, 0.2); Z.x = (r.width - bb.width * Z.k) / 2 - bb.x * Z.k; Z.y = Math.max(pad, (r.height - bb.height * Z.k) / 2) - bb.y * Z.k - 10;
+  // Never open below MIN_K: past that, node text drops under ~12px. A map that does not fit is
+  // pinned to its top-left instead, and the reader pans or zooms out on purpose.
+  const pad = 24, k = Math.min((r.width - pad * 2) / bb.width, (r.height - pad * 2 - 44) / bb.height, 1.2);
+  Z.k = Math.max(k, MIN_K);
+  const w = bb.width * Z.k, hgt = bb.height * Z.k;
+  Z.x = (w <= r.width - pad * 2 ? (r.width - w) / 2 : pad) - bb.x * Z.k;
+  Z.y = (hgt <= r.height - pad * 2 - 44 ? (r.height - 44 - hgt) / 2 : pad) - bb.y * Z.k;
   applyZ();
 }
 function zoomAt(f, cx, cy) {
@@ -612,14 +637,16 @@ function drawRight() {
       h("ul", {}, D.objects.map((o) => h("li", {}, link(o.id), (o.states || []).length ? h("span", { class: "note" }, `  ${o.states.join(" / ")}`) : null)))) : null,
     h("details", { open: true }, h("summary", {}, `${T.open}（${pending.length + (D.openQuestions || []).length}）`),
       h("ul", {},
-        (D.openQuestions || []).map((q) => h("li", {}, h("b", {}, q.question), h("div", { class: "note" }, `${T.needs}：${q.needs}`))),
+        (D.openQuestions || []).map((q) => h("li", {}, h("b", {}, q.question), q.impact ? h("div", { class: "impact" }, `${T.impact}：${q.impact}`) : null,
+          h("div", { class: "note" }, `${T.needs}：${q.needs}`))),
         pending.map((p) => h("li", {}, badge(lvl(p.x)), " ",
           p.kind === "step" ? h("button", { type: "button", class: "linklike", onclick: () => { const [sid, i] = p.id.split("#"); pickScenario(sid, +i); } }, `${scById.get(p.id.split("#")[0]).title} · ${p.x.title}`)
             : h("button", { type: "button", class: "linklike", onclick: () => select(p.kind, p.id) }, p.kind === "edge" ? `${nameOf(p.x.from)} → ${nameOf(p.x.to)}：${p.x.label}` : nameOf(p.id)),
           h("div", { class: "note" }, p.x.evidence && (p.x.evidence.needs || p.x.evidence.note) || ""))))),
     (D.docDrift || []).length ? h("details", { open: true }, h("summary", {}, `${T.drift}（${D.docDrift.length}）`),
-      h("ul", {}, D.docDrift.map((d) => h("li", {}, h("code", {}, d.doc.path + (d.doc.line ? `:${d.doc.line}` : "")),
-        h("div", {}, `${T.claim}：${d.claim}`), h("div", {}, `${T.actual}：${d.actual}`), refList(d.evidence && d.evidence.refs))))) : null);
+      h("ul", {}, [...D.docDrift].sort((a, b) => (b.impact ? 1 : 0) - (a.impact ? 1 : 0)).map((d) => h("li", {}, h("code", {}, d.doc.path + (d.doc.line ? `:${d.doc.line}` : "")),
+        h("div", {}, `${T.claim}：${d.claim}`), h("div", {}, `${T.actual}：${d.actual}`),
+        d.impact ? h("div", { class: "impact" }, `${T.impact}：${d.impact}`) : null, evidenceBlock(d.evidence))))) : null);
 }
 function drawLegend() {
   const lg = $("legend"); lg.replaceChildren();
@@ -640,7 +667,8 @@ function syncHash() {
   try { history.replaceState(null, "", p.toString() ? `#${p}` : location.pathname + location.search); } catch (_) { /* file:// in some browsers */ }
 }
 function render(refit) { drawHeader(); drawCanvas(); drawLeft(); drawRight(); syncHash(); if (refit) fit(); }
-function select(type, id, ids) { S.sel = type ? { type, id, ids } : null; drawCanvas(); drawRight(); }
+function setDrawer(open) { document.body.classList.toggle("drawer-open", open); $("drawer").setAttribute("aria-pressed", String(open)); }
+function select(type, id, ids) { S.sel = type ? { type, id, ids } : null; if (type) setDrawer(true); drawCanvas(); drawRight(); }
 function openModule(mid) { S.view = mid && (byId.get(mid).children || []).length ? mid : null; S.orient = null; S.sel = mid ? { type: "node", id: mid } : null; render(true); }
 function pickScenario(id, i) { S.scenario = id; S.step = i || 0; S.sel = null; render(false); }
 function go(d) { const sc = scById.get(S.scenario); if (!sc) return; goto(Math.min(sc.steps.length - 1, Math.max(0, S.step + d))); }
@@ -649,10 +677,16 @@ document.addEventListener("keydown", (ev) => {
   if (ev.target.closest && ev.target.closest("input, textarea")) return;
   if (ev.key === "ArrowRight") go(1);
   else if (ev.key === "ArrowLeft") go(-1);
-  else if (ev.key === "Escape") { if (S.sel) select(null); else if (S.view) openModule(null); }
+  else if (ev.key === "Escape") {
+    if (S.sel) select(null);
+    else if (document.body.classList.contains("drawer-open")) setDrawer(false);
+    else if (S.view) openModule(null);
+  }
   else if (ev.key === "0") fit();
 });
 $("theme").textContent = T.theme;
+$("drawer").textContent = T.panel;
+$("drawer").onclick = () => setDrawer(!document.body.classList.contains("drawer-open"));
 $("theme").onclick = () => {
   const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
   document.documentElement.dataset.theme = dark ? "light" : "dark";
@@ -662,6 +696,99 @@ window.addEventListener("resize", () => { S.orient = null; drawCanvas(); fit(); 
 const hp = new URLSearchParams(location.hash.slice(1));
 if (hp.get("m") && (byId.get(hp.get("m"))?.children || []).length) S.view = hp.get("m");
 if (scById.has(hp.get("s"))) { S.scenario = hp.get("s"); S.step = Math.min(scById.get(S.scenario).steps.length - 1, Math.max(0, (+hp.get("i") || 1) - 1)); }
+// One call drives the real controls and compares what the page shows with what map.json says:
+// every scenario step's highlights, every module's expansion and breadcrumb, node selection, zoom,
+// and the overview's readability. Run it from any browser tool: `await flowMapSelfCheck()`.
+window.flowMapSelfCheck = async () => {
+  const fails = [], tick = () => new Promise((r) => requestAnimationFrame(() => r()));
+  const click = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  const parent = new Map();
+  for (const n of D.nodes) for (const c of n.children || []) parent.set(c.id, n.id);
+  const top = (id) => parent.get(id) || id;
+  const shown = (sel) => new Set([...document.querySelectorAll(sel)].map((el) => el.dataset.node));
+  const eq = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
+  const fmt = (set) => [...set].sort().join(", ") || "(none)";
+  const restore = location.hash, drawerWas = document.body.classList.contains("drawer-open");
+
+  if (S.view) openModule(null);
+  select(null); pickScenario(null); await tick();
+  const metrics = {};
+  {
+    fit(); await tick();
+    metrics.overviewScale = +Z.k.toFixed(2);
+    metrics.nodeTextPx = +(14 * Z.k).toFixed(1);
+    metrics.edgeTextPx = +(12 * Z.k).toFixed(1);
+    if (metrics.nodeTextPx < 11) fails.push(`overview node text renders at ${metrics.nodeTextPx}px; trim the overview or shorten labels`);
+    const boxes = (sel) => [...document.querySelectorAll(sel)].map((el) => el.getBoundingClientRect());
+    const labels = boxes(".edge .label rect"), nodes = boxes(".node rect");
+    const hit = (a, b) => a.left + 2 < b.right && b.left + 2 < a.right && a.top + 2 < b.bottom && b.top + 2 < a.bottom;
+    let overlaps = 0;
+    labels.forEach((a, i) => { for (const b of [...labels.slice(i + 1), ...nodes]) if (hit(a, b)) overlaps++; });
+    metrics.labelOverlaps = overlaps;
+    if (overlaps) fails.push(`${overlaps} edge label(s) overlap another label or a node in the overview`);
+  }
+
+  const buttons = () => [...document.querySelectorAll(".scenario-list button")];
+  for (const [si, sc] of D.scenarios.entries()) {
+    click(buttons()[si + 1]); await tick();
+    for (const [i, st] of sc.steps.entries()) {
+      if (i) { click($("next")); await tick(); }
+      const where = `${sc.id} step ${i + 1}`;
+      const count = document.querySelector(".stepper .count").textContent;
+      if (!count.includes(String(i + 1))) fails.push(`${where}: stepper shows "${count}"`);
+      if (!document.querySelector(".step-now h3").textContent.startsWith(st.title)) fails.push(`${where}: step title not shown`);
+      const want = new Set((st.nodes || []).map(top));
+      for (const id of st.edges || []) { const e = edgeById.get(id); want.add(top(e.from)); want.add(top(e.to)); }
+      const got = shown(".node.hot");
+      if (!eq(want, got)) fails.push(`${where}: highlighted ${fmt(got)}, expected ${fmt(want)}`);
+      const hotEdges = new Set([...document.querySelectorAll("g.edge.hot[data-edge]")].flatMap((el) => el.dataset.edge.split(" ")));
+      for (const id of st.edges || []) {
+        const e = edgeById.get(id);
+        if (top(e.from) !== top(e.to) && !hotEdges.has(id)) fails.push(`${where}: edge ${id} not highlighted`);
+      }
+    }
+    if (!$("next").disabled) fails.push(`${sc.id}: Next still enabled on the last step`);
+  }
+  click(buttons()[0]); await tick();
+
+  for (const n of D.nodes) {
+    const g = document.querySelector(`.node[data-node="${CSS.escape(n.id)}"]`);
+    if (!g) { fails.push(`node ${n.id} missing from the overview`); continue; }
+    click(g); await tick();
+    if (!$("right").textContent.includes(n.label)) fails.push(`clicking ${n.id} did not show its details`);
+    if (!(n.children || []).length) continue;
+    const expand = [...$("right").querySelectorAll("button")].find((b) => b.textContent === T.expand);
+    if (!expand) { fails.push(`${n.id}: no expand button`); continue; }
+    click(expand); await tick();
+    const kids = shown(".node:not(.stub)"), want = new Set(n.children.map((c) => c.id));
+    if (!eq(want, kids)) fails.push(`${n.id} expanded shows ${fmt(kids)}, expected ${fmt(want)}`);
+    const back = $("crumbs").querySelector("button");
+    if (!back) { fails.push(`${n.id}: no breadcrumb back to the overview`); continue; }
+    click(back); await tick();
+    if (S.view) fails.push(`${n.id}: breadcrumb did not return to the overview`);
+  }
+  select(null);
+
+  const before = Z.k;
+  click($("zin")); await tick();
+  if (!(Z.k > before)) fails.push("zoom in did not change the scale");
+  click($("zfit")); await tick();
+  if (Math.abs(Z.k - before) > 0.01) fails.push("reset view did not restore the fitted scale");
+
+  const pendingWanted = (D.openQuestions || []).length;
+  const listed = document.querySelectorAll("#right details li").length;
+  if (pendingWanted && !listed) fails.push("open questions are not listed");
+  metrics.evidence = {};
+  const count = (x) => { if (x && x.evidence) metrics.evidence[x.evidence.level] = (metrics.evidence[x.evidence.level] || 0) + 1; };
+  D.nodes.forEach((n) => { count(n); (n.children || []).forEach(count); });
+  D.edges.forEach(count); (D.objects || []).forEach(count); (D.docDrift || []).forEach(count);
+  D.scenarios.forEach((sc) => sc.steps.forEach((st) => { count(st); (st.branches || []).forEach(count); }));
+
+  setDrawer(drawerWas);
+  try { history.replaceState(null, "", restore || location.pathname); } catch (_) { /* file:// */ }
+  return { ok: fails.length === 0, failures: fails, metrics };
+};
+
 drawLegend();
 render(true);
 })();

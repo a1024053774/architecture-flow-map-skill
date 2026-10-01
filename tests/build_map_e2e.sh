@@ -4,8 +4,10 @@
 #
 # Ways the builder can fail, each covered below by a map that must be rejected (exit 1, named error):
 #   refs:      path missing, path escapes --root, line past end of file, symbol absent,
-#              symbol moved away from its line (stale reference after a refactor)
-#   evidence:  confirmed without refs, inferred without a basis note, unknown without `needs`
+#              symbol moved away from its line (stale reference after a refactor), symbol only
+#              near the cited line rather than on it
+#   evidence:  confirmed without refs or runs, inferred without a basis note, unknown without
+#              `needs`, a run without its observed result (a run alone may confirm a claim)
 #   graph:     edge to an undefined node, unknown edge kind, undeclared lane,
 #              the same id used for a node and a child
 #   scenarios: step names an undefined edge, step highlights nothing, scenario with one step,
@@ -13,7 +15,7 @@
 #   objects:   transition between states the object does not declare
 #   output:    a failed build leaves the previous HTML untouched;
 #              `</script>` inside map text cannot close the data block early
-#   budget:    an overview over 14 nodes warns but still builds
+#   budget:    an overview over 14 nodes warns but still builds; so does a long edge label
 BUILD="python3 $(cd "$(dirname "$0")/.." && pwd)/architecture-flow-map/scripts/build_map.py"
 R=$(mktemp -d "${TMPDIR:-/tmp}/flowmap.XXXX"); cd "$R" || exit 1
 pass=0; fail=0
@@ -74,7 +76,7 @@ cat > good.json <<'EOF'
   ],
   "docDrift": [
     {"doc": {"path": "README.md", "line": 1}, "claim": "A shop", "actual": "Only a queue",
-     "evidence": {"level": "confirmed", "refs": [{"path": "app/server.py"}]}}
+     "evidence": {"level": "confirmed", "runs": [{"command": "python -c 'import app.server'", "observed": "imports with no web framework"}]}}
   ],
   "openQuestions": [{"question": "Who starts the worker?", "needs": "Process manager config.", "related": ["worker"]}]
 }
@@ -101,8 +103,10 @@ reject "missing path"            "does not exist"            "$REF['path'] = 'ap
 reject "path outside root"       "is outside --root"         "$REF['path'] = '../good.json'; $REF.pop('line'); $REF.pop('symbol')"
 reject "line past end of file"   "is outside 1.."            "$REF['line'] = 400"
 reject "symbol absent"           "not found in"              "$REF['symbol'] = 'def refund'"
-reject "symbol moved from line"  "is not near line 2"        "$REF['line'] = 2"
-reject "confirmed without refs"  "needs at least one ref"    "$N['evidence']['refs'] = []"
+reject "symbol moved from line"  "is not on line 2"          "$REF['line'] = 2"
+reject "symbol only near line"   "is not on line 7"          "$REF['line'] = 7"
+reject "confirmed without refs"  "needs at least one ref or run" "$N['evidence']['refs'] = []"
+reject "run without observed"    "needs \`command\` and \`observed\`" "m['docDrift'][0]['evidence']['runs'][0]['observed'] = ''"
 reject "inferred without note"   "needs a \`note\`"          "del m['nodes'][1]['evidence']['note']"
 reject "unknown without needs"   "needs \`needs\`"           "del m['nodes'][2]['evidence']['needs']"
 reject "edge to undefined node"  "is not a node"             "m['edges'][0]['to'] = 'billing'"
@@ -140,6 +144,15 @@ print(json.dumps(m))
 EOF
 out=$($BUILD --root repo --data big.json --check 2>&1); code=$?
 if [ $code = 0 ] && grep -q "WARN  map: 16 overview nodes" <<<"$out"; then ok "over-budget overview warns but builds"; else no "over-budget overview warns but builds (exit $code)" "$out"; fi
+
+python3 - <<'EOF' > long.json
+import json
+m = json.load(open("good.json"))
+m["edges"][0]["label"] = "把新建的订单放进内存队列等待后台工作线程处理"
+print(json.dumps(m, ensure_ascii=False))
+EOF
+out=$($BUILD --root repo --data long.json --check 2>&1); code=$?
+if [ $code = 0 ] && grep -q "WARN  edge e1: label is wider" <<<"$out"; then ok "long edge label warns but builds"; else no "long edge label warns but builds (exit $code)" "$out"; fi
 
 echo "$pass passed, $fail failed  (fixture: $R)"
 [ $fail = 0 ]
