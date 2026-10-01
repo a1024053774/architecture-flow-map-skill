@@ -1,0 +1,320 @@
+{
+  "schema": 1,
+  "title": "project-map-skill 运行地图",
+  "locale": "zh-CN",
+  "generatedAt": "2026-10-01",
+  "commit": "31220c1",
+  "summary": "这个项目由两半组成：一半是给 Agent 读的流程规则（SKILL.md），规定谁在什么时候建票、认领、关票；另一半是唯一的可执行代码 project_map.py，它只有 init 和 status 两个命令。脚本从不写票据，只负责建骨架和检查：status 先检查 MAP.md 与 tickets/*.md 的结构，再用 git（或修改时间）判断活文档是否过时，最后算出可领取的 frontier，用退出码 0/1 表示是否健康。所以票据的状态变化全部由 Agent 或用户手写完成，脚本只在事后核对。",
+  "lanes": [
+    { "id": "actor", "label": "使用者" },
+    { "id": "rules", "label": "规则与模板" },
+    { "id": "entry", "label": "命令入口" },
+    { "id": "logic", "label": "检查逻辑" },
+    { "id": "state", "label": "文件与 git" }
+  ],
+  "nodes": [
+    {
+      "id": "agent", "label": "用户 / Agent 会话", "lane": "actor", "kind": "actor",
+      "role": "读 SKILL.md 决定下一步，运行 init / status，并亲手创建、认领、关闭票据和改 MAP.md。项目里所有写票据的动作都发生在这里，而不是脚本里。",
+      "objects": ["ticket", "map"],
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/SKILL.md", "line": 32, "symbol": "project_map.py status" },
+        { "path": "project-map/SKILL.md", "line": 49, "symbol": "claimed_by" }
+      ] }
+    },
+    {
+      "id": "skill", "label": "SKILL.md 流程规则", "lane": "rules", "kind": "doc",
+      "role": "规定会话开始先跑 status、票据类型与处理顺序、四步流水线和活文档规则。它是 Agent 的操作手册，本身不执行任何检查。",
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/SKILL.md", "line": 30, "symbol": "## Session start" },
+        { "path": "project-map/SKILL.md", "line": 58, "symbol": "## Pipeline" }
+      ] }
+    },
+    {
+      "id": "templates", "label": "票据与地图模板", "lane": "rules", "kind": "config",
+      "role": "MAP.md、ticket.md、build-ticket.md、spec.md 四个模板。init 只自动复制 MAP.md，其余模板由 Agent 手动复制。",
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/assets/templates" },
+        { "path": "project-map/scripts/project_map.py", "line": 22, "symbol": "TEMPLATES" },
+        { "path": "project-map/references/formats.md", "line": 3, "symbol": "copies `MAP.md`" }
+      ] }
+    },
+    {
+      "id": "cli", "label": "project_map.py 命令行", "lane": "entry", "kind": "entry",
+      "role": "解析 init / status（默认 status）和 --root，分派给 cmd_init 或 cmd_status，并把结果作为退出码返回。",
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/scripts/project_map.py", "line": 262, "symbol": "def main" }
+      ] },
+      "children": [
+        { "id": "cli.main", "label": "main()", "role": "argparse 解析命令，默认 status；--root 默认当前目录并 resolve。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 262, "symbol": "def main" } ] } },
+        { "id": "cli.init", "label": "cmd_init()", "role": "拒绝已存在的 .project-map 或其他账本；否则建 tickets/ 并复制 MAP.md 模板。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 247, "symbol": "def cmd_init" } ] } },
+        { "id": "cli.status", "label": "cmd_status()", "role": "依次调用结构检查、活文档检查、frontier 计算，打印三段报告；有问题或有过时文档时返回 1。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 225, "symbol": "def cmd_status" } ] } }
+      ]
+    },
+    {
+      "id": "mapcheck", "label": "地图与票据检查", "lane": "logic", "kind": "module",
+      "role": "读 MAP.md 和全部票据，检查行数预算、必需章节、断链、票据字段、阻塞与取代关系、Resolution、build 票验收勾选，以及 Decisions so far 与票据状态是否一致。",
+      "objects": ["map", "ticket"],
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/scripts/project_map.py", "line": 90, "symbol": "def check_map" }
+      ] },
+      "children": [
+        { "id": "mapcheck.check_map", "label": "check_map()", "role": "MAP.md 级检查和票据交叉检查，返回 problems、MAP 原文和票据字典。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 90, "symbol": "def check_map" } ] } },
+        { "id": "mapcheck.load", "label": "load_tickets()", "role": "遍历 tickets/*.md，校验必需字段、文件名前缀、重复 id、type 与 status 取值。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 62, "symbol": "def load_tickets" } ] } },
+        { "id": "mapcheck.parse", "label": "parse_ticket()", "role": "手写的 frontmatter 解析：key: value 和 [A, B] 列表，再按 ## 标题切正文。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 42, "symbol": "def parse_ticket" } ] } }
+      ]
+    },
+    {
+      "id": "doccheck", "label": "活文档过时检查", "lane": "logic", "kind": "module",
+      "role": "解析 MAP.md 的 Living docs 表，对每份活文档判断它 covers 的路径在文档最后被审阅之后有没有改动。git 仓库用提交历史和工作区状态，非 git 目录用修改时间。",
+      "objects": ["livingdoc"],
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/scripts/project_map.py", "line": 191, "symbol": "def check_docs" }
+      ] },
+      "children": [
+        { "id": "doccheck.check_docs", "label": "check_docs()", "role": "逐行处理活文档：路径越界、文件不存在、没有 covers 都记为 problem；再按是否 git 工作区选择检查方式。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 191, "symbol": "def check_docs" } ] } },
+        { "id": "doccheck.rows", "label": "living_docs()", "role": "从 Living docs 表格提取 (文档链接, covers 列表, Verified)。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 135, "symbol": "def living_docs" } ] } },
+        { "id": "doccheck.git", "label": "stale_git()", "role": "用 ls-files 确认 covers 能匹配文件；基准取文档最后提交与 Verified 中较晚者；base..HEAD 有改动或工作区脏而文档没改，都判为过时。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 152, "symbol": "def stale_git" } ] } },
+        { "id": "doccheck.mtime", "label": "stale_mtime()", "role": "非 git 目录的退路：covers 文件比文档新就算过时；Verified 必须是 YYYY-MM-DD 日期。", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 177, "symbol": "def stale_mtime" } ] } }
+      ]
+    },
+    {
+      "id": "frontier", "label": "frontier 计算", "lane": "logic", "kind": "module",
+      "role": "从票据里挑出 open、未认领、且所有 blocked_by 都已 closed 或 superseded 的票。它是\"下一步能做什么\"的唯一来源，不手工维护。",
+      "objects": ["ticket"],
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/scripts/project_map.py", "line": 215, "symbol": "def frontier" }
+      ] }
+    },
+    {
+      "id": "mapdir", "label": ".project-map/ 目录", "lane": "state", "kind": "store",
+      "role": "MAP.md（目的地、已做决定、迷雾、范围外、活文档表）和 tickets/T-xxx-*.md。项目状态全部存在这些 Markdown 文件里，没有数据库。",
+      "objects": ["map", "ticket"],
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/scripts/project_map.py", "line": 92, "symbol": "\".project-map\"" },
+        { "path": "project-map/SKILL.md", "line": 17, "symbol": "## Layout" }
+      ] }
+    },
+    {
+      "id": "workspace", "label": "项目工作区文件", "lane": "state", "kind": "store",
+      "role": "被检查项目里的活文档本身、它们 covers 的代码文件，以及 .project-to-act/、PROJECT_LEDGER.md 这类其他账本的痕迹。",
+      "objects": ["livingdoc"],
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/scripts/project_map.py", "line": 23, "symbol": "OTHER_LEDGERS" },
+        { "path": "project-map/scripts/project_map.py", "line": 178, "symbol": "root.glob(c)" }
+      ] }
+    },
+    {
+      "id": "git", "label": "git 命令", "lane": "state", "kind": "external",
+      "role": "通过子进程调用 git：rev-parse、ls-files、log、merge-base、status。命令失败时返回 None，由调用方当作\"没有结果\"处理。",
+      "evidence": { "level": "confirmed", "refs": [
+        { "path": "project-map/scripts/project_map.py", "line": 146, "symbol": "def git" }
+      ] }
+    }
+  ],
+  "edges": [
+    { "id": "e-agent-cli", "from": "agent", "to": "cli.main", "kind": "sync", "label": "运行 init / status",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/SKILL.md", "line": 32, "symbol": "project_map.py status" }, { "path": "project-map/scripts/project_map.py", "line": 264, "symbol": "choices=(\"status\", \"init\")" } ] } },
+    { "id": "e-skill-agent", "from": "skill", "to": "agent", "kind": "data", "label": "提供流程规则",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/SKILL.md", "line": 38, "symbol": "## Tickets" } ] } },
+    { "id": "e-agent-mapdir", "from": "agent", "to": "mapdir", "kind": "data", "label": "手写票据与 MAP.md",
+      "detail": "建票、认领（claimed_by）、写 Resolution、改 status、在 Decisions so far 加一行，都由 Agent 或用户直接编辑文件完成。",
+      "evidence": { "level": "inferred", "note": "SKILL.md 把这些动作交给 Agent；脚本中除 init 复制 MAP.md 外没有任何写文件的代码，所以写入方只能是使用者。", "refs": [ { "path": "project-map/SKILL.md", "line": 49, "symbol": "claimed_by" }, { "path": "project-map/scripts/project_map.py", "line": 257, "symbol": "shutil.copyfile" } ] } },
+    { "id": "e-templates-agent", "from": "templates", "to": "agent", "kind": "data", "label": "手动复制票据模板",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/references/formats.md", "line": 3, "symbol": "copy `ticket.md`" } ] } },
+    { "id": "e-main-init", "from": "cli.main", "to": "cli.init", "kind": "sync", "label": "command == init",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 268, "symbol": "cmd_init(root)" } ] } },
+    { "id": "e-main-status", "from": "cli.main", "to": "cli.status", "kind": "sync", "label": "默认 status",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 268, "symbol": "cmd_status(root)" } ] } },
+    { "id": "e-init-ledger", "from": "workspace", "to": "cli.init", "kind": "data", "label": "检查已有账本",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 252, "symbol": "OTHER_LEDGERS" } ] } },
+    { "id": "e-tpl-init", "from": "templates", "to": "cli.init", "kind": "data", "label": "读取 MAP.md 模板",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 257, "symbol": "TEMPLATES / \"MAP.md\"" } ] } },
+    { "id": "e-init-write", "from": "cli.init", "to": "mapdir", "kind": "data", "label": "创建目录并写入 MAP.md",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 256, "symbol": "mkdir(parents=True)" } ] } },
+    { "id": "e-status-check", "from": "cli.status", "to": "mapcheck.check_map", "kind": "sync", "label": "结构检查",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 226, "symbol": "check_map(root)" } ] } },
+    { "id": "e-check-load", "from": "mapcheck.check_map", "to": "mapcheck.load", "kind": "sync", "label": "加载票据",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 108, "symbol": "load_tickets(map_dir, problems)" } ] } },
+    { "id": "e-load-parse", "from": "mapcheck.load", "to": "mapcheck.parse", "kind": "sync", "label": "逐个解析 frontmatter",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 66, "symbol": "parse_ticket(path)" } ] } },
+    { "id": "e-mapdir-check", "from": "mapdir", "to": "mapcheck.check_map", "kind": "data", "label": "读取 MAP.md",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 96, "symbol": "map_path.read_text" } ] } },
+    { "id": "e-mapdir-parse", "from": "mapdir", "to": "mapcheck.parse", "kind": "data", "label": "读取 tickets/*.md",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 43, "symbol": "path.read_text" } ] } },
+    { "id": "e-status-docs", "from": "cli.status", "to": "doccheck.check_docs", "kind": "sync", "label": "传入 MAP.md 原文做活文档检查",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 229, "symbol": "check_docs(root, text)" } ] } },
+    { "id": "e-docs-rows", "from": "doccheck.check_docs", "to": "doccheck.rows", "kind": "sync", "label": "解析 Living docs 表",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 194, "symbol": "living_docs(text)" } ] } },
+    { "id": "e-docs-git", "from": "doccheck.check_docs", "to": "doccheck.git", "kind": "sync", "label": "git 工作区时",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 207, "symbol": "stale_git if use_git else stale_mtime" } ] } },
+    { "id": "e-docs-mtime", "from": "doccheck.check_docs", "to": "doccheck.mtime", "kind": "sync", "label": "非 git 目录时",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 207, "symbol": "stale_git if use_git else stale_mtime" } ] } },
+    { "id": "e-docs-probe", "from": "doccheck.check_docs", "to": "git", "kind": "sync", "label": "判断是否 git 工作区",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 193, "symbol": "rev-parse\", \"--is-inside-work-tree" } ] } },
+    { "id": "e-stalegit-git", "from": "doccheck.git", "to": "git", "kind": "sync", "label": "ls-files / log / merge-base / status",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 155, "symbol": "ls-files" }, { "path": "project-map/scripts/project_map.py", "line": 166, "symbol": "\"log\", \"--format=\", \"--name-only\"" } ] } },
+    { "id": "e-ws-docs", "from": "workspace", "to": "doccheck.check_docs", "kind": "data", "label": "确认活文档文件存在",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 201, "symbol": "doc_path.is_file()" } ] } },
+    { "id": "e-ws-mtime", "from": "workspace", "to": "doccheck.mtime", "kind": "data", "label": "读取修改时间",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 181, "symbol": "st_mtime" } ] } },
+    { "id": "e-status-frontier", "from": "cli.status", "to": "frontier", "kind": "sync", "label": "计算可领取的票",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 235, "symbol": "frontier(tickets)" } ] } },
+    { "id": "e-cli-report", "from": "cli.main", "to": "agent", "kind": "data", "label": "打印报告，退出码 0 / 1",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 244, "symbol": "return 1 if problems or stale else 0" }, { "path": "project-map/scripts/project_map.py", "line": 272, "symbol": "raise SystemExit(main())" } ] } }
+  ],
+  "objects": [
+    {
+      "id": "map", "label": "MAP.md 地图", "storedIn": ".project-map/MAP.md",
+      "description": "项目的一页索引：目的地、Notes、已做决定（每张已关闭的非 build 票一行）、迷雾、范围外、活文档表。上限 150 行。",
+      "createdBy": ["cli.init"], "readBy": ["mapcheck.check_map", "doccheck.rows"], "writtenBy": ["agent"],
+      "relations": [
+        { "to": "ticket", "label": "Decisions so far 用链接列出已关闭的决定票" },
+        { "to": "livingdoc", "label": "Living docs 表登记每份活文档及其 covers" }
+      ],
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 15, "symbol": "SECTIONS" }, { "path": "project-map/scripts/project_map.py", "line": 14, "symbol": "MAP_BUDGET" } ] }
+    },
+    {
+      "id": "ticket", "label": "票据", "storedIn": ".project-map/tickets/T-xxx-*.md",
+      "description": "一个待决问题或一项工作。类型有 decide、compare、prototype、research、task、build；关闭后的票据本身就是决定记录。",
+      "createdBy": ["agent"], "readBy": ["mapcheck.load", "mapcheck.parse", "frontier"], "writtenBy": ["agent"],
+      "states": ["open", "closed", "superseded", "out-of-scope"],
+      "transitions": [
+        { "from": "open", "to": "closed", "by": "Agent 手改", "note": "必须有 Resolution；build 票必须全部勾选；非 build 票要出现在 Decisions so far" },
+        { "from": "open", "to": "out-of-scope", "by": "Agent 手改", "note": "判定超出目的地" },
+        { "from": "closed", "to": "superseded", "by": "Agent 手改", "note": "新票 supersedes 旧票并关闭后" }
+      ],
+      "relations": [ { "to": "map", "label": "关闭后在 Decisions so far 出现一次" } ],
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 17, "symbol": "STATUSES" }, { "path": "project-map/scripts/project_map.py", "line": 120, "symbol": "closed without a Resolution" }, { "path": "project-map/SKILL.md", "line": 56, "symbol": "supersedes" } ] }
+    },
+    {
+      "id": "livingdoc", "label": "活文档登记", "storedIn": "MAP.md 的 Living docs 表（一行一份）",
+      "description": "被当作\"当前事实\"依赖的文档（README、架构说明、AGENTS.md 等）及其 covers 路径和 Verified 列。\"过时\"不是存下来的字段，而是每次 status 运行时算出来的。",
+      "createdBy": ["agent"], "readBy": ["doccheck.rows", "doccheck.git", "doccheck.mtime"], "writtenBy": ["agent"],
+      "states": ["最新", "过时", "已核验（Verified）"],
+      "transitions": [
+        { "from": "最新", "to": "过时", "by": "代码改动", "note": "covers 路径在审阅之后又被提交或在工作区修改" },
+        { "from": "过时", "to": "最新", "by": "Agent", "note": "更新文档并提交" },
+        { "from": "过时", "to": "已核验（Verified）", "by": "Agent", "note": "确认不受影响，把当前提交写进 Verified" }
+      ],
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 152, "symbol": "def stale_git" }, { "path": "project-map/SKILL.md", "line": 107, "symbol": "Without git" } ] }
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "init", "title": "初始化一个项目地图", "why": "地图从这里诞生，也是唯一由脚本写文件的路径",
+      "trigger": "用户要求建地图后，Agent 运行 project_map.py init --root <项目>",
+      "result": "生成 .project-map/MAP.md 与空的 tickets/，退出码 0；目的地仍需和用户一起填写",
+      "steps": [
+        { "title": "解析命令", "text": "main() 用 argparse 读到 init 和 --root，把根目录展开成绝对路径，然后同步调用 cmd_init。", "nodes": ["agent"], "edges": ["e-agent-cli", "e-main-init"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 267, "symbol": "expanduser().resolve()" } ] } },
+        { "title": "防止重复建图", "text": "cmd_init 先看 .project-map 是否已存在，再看根目录下有没有 .project-to-act/ 或 PROJECT_LEDGER.md 这类其他账本。", "nodes": ["cli.init"], "edges": ["e-init-ledger"],
+          "branches": [
+            { "when": ".project-map 已存在", "then": "打印 already exists 到 stderr，退出码 1，不改任何文件", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 250, "symbol": "already exists" } ] } },
+            { "when": "发现其他账本", "then": "提示先选定唯一的账本，退出码 1", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 254, "symbol": "another ledger exists" } ] } }
+          ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 249, "symbol": "map_dir.exists()" } ] } },
+        { "title": "建目录、复制模板", "text": "创建 .project-map/tickets/，把 assets/templates/MAP.md 原样复制过去。其他模板此时不复制。", "edges": ["e-tpl-init", "e-init-write"],
+          "data": [ { "object": "map", "op": "create" } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 256, "symbol": "mkdir(parents=True)" }, { "path": "project-map/scripts/project_map.py", "line": 257, "symbol": "shutil.copyfile" } ] } },
+        { "title": "返回并交给使用者", "text": "打印 created 路径，退出码 0。按 SKILL.md，接下来由 Agent 和用户一起填写 Destination。", "nodes": ["agent", "skill"], "edges": ["e-cli-report", "e-skill-agent"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 258, "symbol": "created" }, { "path": "project-map/SKILL.md", "line": 36, "symbol": "fill in the destination" } ] } }
+      ]
+    },
+    {
+      "id": "status", "title": "会话开始时运行 status", "why": "每个会话的第一步，决定 Agent 下一步做什么",
+      "trigger": "Agent 在会话开始时运行 project_map.py status --root <项目>（命令缺省时也是 status）",
+      "result": "打印 Problems、Stale living docs、Frontier（和已认领的票），有问题或过时文档时退出码 1",
+      "steps": [
+        { "title": "进入 cmd_status", "text": "Agent 按 SKILL.md 的 Session start 运行 status；main() 同步调用 cmd_status。", "nodes": ["agent", "skill"], "edges": ["e-skill-agent", "e-agent-cli", "e-main-status"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/SKILL.md", "line": 32, "symbol": "project_map.py status" } ] } },
+        { "title": "检查 MAP.md 本身", "text": "check_map 读 MAP.md：超过 150 行、缺少六个必需章节之一、链接指向不存在的文件，都记为 problem。注意章节只检查存在，不检查顺序。", "edges": ["e-status-check", "e-mapdir-check"],
+          "data": [ { "object": "map", "op": "read" } ],
+          "branches": [ { "when": "MAP.md 不存在", "then": "直接返回\"not found; run init\"，不再加载票据，活文档检查也会跳过", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 95, "symbol": "run init" }, { "path": "project-map/scripts/project_map.py", "line": 228, "symbol": "if text:" } ] } } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 98, "symbol": "MAP_BUDGET" }, { "path": "project-map/scripts/project_map.py", "line": 101, "symbol": "for name in SECTIONS" } ] } },
+        { "title": "加载并解析全部票据", "text": "load_tickets 遍历 tickets/*.md，parse_ticket 解析 frontmatter。缺 frontmatter、缺字段、文件名不以 id 开头、重复 id、未知 type 或 status 都记为 problem；缺字段的票会被跳过。", "edges": ["e-check-load", "e-load-parse", "e-mapdir-parse"],
+          "data": [ { "object": "ticket", "op": "read" } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 70, "symbol": "missing = [f for f in FIELDS" } ] } },
+        { "title": "票据交叉检查", "text": "对每张票检查：blocked_by 和 supersedes 指向的票是否存在；closed 是否写了 Resolution；build 票是否有验收勾选、关闭时是否全部勾上；关闭的决定票是否列在 Decisions so far，open 的票是否误列。", "nodes": ["mapcheck.check_map"],
+          "data": [ { "object": "ticket", "op": "read" }, { "object": "map", "op": "read" } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 110, "symbol": "for tid, t in tickets.items()" }, { "path": "project-map/scripts/project_map.py", "line": 122, "symbol": "t[\"type\"] == \"build\"" } ] } },
+        { "title": "活文档过时检查", "text": "cmd_status 把 MAP.md 原文交给 check_docs，结果分成 problems 和 stale 两类（细节见\"活文档被判为过时\"场景）。", "edges": ["e-status-docs"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 229, "symbol": "check_docs(root, text)" } ] } },
+        { "title": "算出 frontier", "text": "frontier() 选出 open、未认领、所有阻塞都已 closed 或 superseded 的票。已认领的 open 票另列在 Claimed 段。", "edges": ["e-status-frontier"],
+          "data": [ { "object": "ticket", "op": "read" } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 221, "symbol": "not t[\"claimed_by\"]" }, { "path": "project-map/scripts/project_map.py", "line": 239, "symbol": "claimed = " } ] } },
+        { "title": "打印报告并返回退出码", "text": "依次打印三段报告。只要有 problem 或过时文档就返回 1；frontier 为空不算失败。Agent 据此修问题或从 frontier 取票。", "nodes": ["agent"], "edges": ["e-cli-report"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 244, "symbol": "return 1 if problems or stale else 0" } ] } }
+      ]
+    },
+    {
+      "id": "stale", "title": "活文档被判为过时", "why": "这是脚本里最复杂的分支，也最容易误解",
+      "trigger": "status 运行到 check_docs，MAP.md 的 Living docs 表里至少登记了一份文档",
+      "result": "过时的文档进入 Stale living docs 段，配置错误进入 Problems 段，两者都让退出码变成 1",
+      "steps": [
+        { "title": "解析活文档表", "text": "living_docs() 跳过表头和分隔行，取出文档链接（相对 MAP.md）、反引号里的 covers 路径和 Verified 列。", "edges": ["e-docs-rows"],
+          "data": [ { "object": "livingdoc", "op": "read" } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 139, "symbol": "cells[0] in (\"Doc\", \"\")" } ] } },
+        { "title": "先排除配置错误", "text": "文档路径跳出项目根、文件不存在、没写 covers，都记为 problem 并跳过这一行。", "nodes": ["doccheck.check_docs"], "edges": ["e-ws-docs"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 199, "symbol": "outside the project root" }, { "path": "project-map/scripts/project_map.py", "line": 205, "symbol": "no covers paths" } ] } },
+        { "title": "选择检查方式", "text": "调用 git rev-parse --is-inside-work-tree：是 git 工作区就走 stale_git，否则走 stale_mtime。", "edges": ["e-docs-probe", "e-docs-git", "e-docs-mtime"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 193, "symbol": "use_git" } ] } },
+        { "title": "git：确定审阅基准", "text": "先用 ls-files 确认 covers 能匹配到文件，否则是 problem。基准提交取文档自己的最后一次提交；如果 Verified 提交更晚（文档提交是它的祖先），就以 Verified 为准。", "nodes": ["doccheck.git"], "edges": ["e-stalegit-git"],
+          "branches": [ { "when": "Verified 写了不存在的提交", "then": "记为 problem，不判断过时", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 161, "symbol": "Verified commit" } ] } } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 157, "symbol": "base = git(root, \"log\", \"-1\"" }, { "path": "project-map/scripts/project_map.py", "line": 162, "symbol": "merge-base" } ] } },
+        { "title": "git：比较基准之后的改动", "text": "base..HEAD 之间 covers 路径（排除文档自己）有提交，就判为过时；否则再看工作区：covers 路径有未提交改动、而文档本身没改，也判为过时。", "nodes": ["doccheck.git"], "edges": ["e-stalegit-git"],
+          "data": [ { "object": "livingdoc", "op": "read" } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 166, "symbol": "f\"{base}..HEAD\"" }, { "path": "project-map/scripts/project_map.py", "line": 171, "symbol": "if dirty and not git" } ] } },
+        { "title": "非 git：比较修改时间", "text": "glob 出 covers 文件，只要有文件比文档新（或比 Verified 日期新）就判为过时。这里 Verified 必须是 YYYY-MM-DD 日期，写提交号会报 problem。", "nodes": ["doccheck.mtime"], "edges": ["e-ws-mtime"],
+          "branches": [ { "when": "Verified 不是日期", "then": "记为 problem：Verified must be a date", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 186, "symbol": "Verified must be a date" } ] } } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 187, "symbol": "st_mtime > reviewed" } ] } },
+        { "title": "汇总到报告", "text": "每份过时文档在 Stale living docs 段占一行并说明原因；cmd_status 因此返回 1。Agent 要么更新文档，要么确认无影响后填 Verified。", "nodes": ["cli.status", "agent"], "edges": ["e-cli-report"],
+          "data": [ { "object": "map", "op": "read" } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 231, "symbol": "Stale living docs" }, { "path": "project-map/SKILL.md", "line": 105, "symbol": "Stale check before done" } ] } }
+      ]
+    },
+    {
+      "id": "build", "title": "Agent 做完一张 build 票", "why": "看清哪些规则由脚本强制、哪些只靠 Agent 自觉",
+      "trigger": "status 的 frontier 里有一张 build 票，Agent 在新会话里接手",
+      "result": "票据 closed 且验收全部勾选、写了 Resolution，status 退出码 0；否则 status 报 problem",
+      "steps": [
+        { "title": "按规则选票", "text": "Agent 读 SKILL.md 第 4 步：一个会话只做一张，从 frontier 里取。", "nodes": ["agent", "skill", "frontier"], "edges": ["e-skill-agent"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/SKILL.md", "line": 83, "symbol": "One ticket per session" } ] } },
+        { "title": "认领：写 claimed_by", "text": "Agent 直接编辑票据 frontmatter 写上 claimed_by。下次 status 运行时，这张票会离开 frontier，出现在 Claimed 段。", "nodes": ["agent", "frontier"], "edges": ["e-agent-mapdir"],
+          "data": [ { "object": "ticket", "op": "update" } ],
+          "branches": [ { "when": "两个会话几乎同时认领同一张票", "then": "脚本没有锁或比较写入，两边都可能认为自己认领成功", "evidence": { "level": "inferred", "note": "代码里只读 claimed_by，没有任何加锁、原子写或冲突检测；是否在实际使用中发生过无法从静态代码确认。", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 221, "symbol": "not t[\"claimed_by\"]" } ] } } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/SKILL.md", "line": 49, "symbol": "claimed_by" }, { "path": "project-map/scripts/project_map.py", "line": 239, "symbol": "claimed = " } ] } },
+        { "title": "先红后绿地实现", "text": "让端到端检查先失败、再实现、再通过并保留工件。这一段完全发生在被管理的项目里，脚本不参与，也不检查是否真的先红后绿。", "nodes": ["agent"],
+          "evidence": { "level": "inferred", "note": "只有 SKILL.md 规定这些步骤；project_map.py 中没有任何读取测试结果或工件的代码。", "refs": [ { "path": "project-map/SKILL.md", "line": 86, "symbol": "Make the agreed end-to-end check fail" } ] } },
+        { "title": "关票：勾选、写结论", "text": "Agent 把验收项勾成 [x]，在 Resolution 写命令、结果、提交，并把 status 改成 closed。build 票不需要写进 Decisions so far。", "nodes": ["agent"], "edges": ["e-agent-mapdir"],
+          "data": [ { "object": "ticket", "op": "update" } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/SKILL.md", "line": 91, "symbol": "Close with the resolution" }, { "path": "project-map/scripts/project_map.py", "line": 128, "symbol": "t[\"type\"] != \"build\"" } ] } },
+        { "title": "status 核对关票是否合规", "text": "再跑 status：closed 却没有 Resolution、build 票没有勾选项、或关闭时还有未勾选项，都会成为 problem，退出码 1。脚本核对的是\"格式\"，不核对勾选背后是否真有证据。", "nodes": ["mapcheck.check_map"], "edges": ["e-agent-cli", "e-main-status", "e-status-check"],
+          "data": [ { "object": "ticket", "op": "read" } ],
+          "branches": [ { "when": "还有未勾选的验收项", "then": "problem：closed with N unchecked acceptance criteria", "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 127, "symbol": "unchecked acceptance criteria" } ] } } ],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 123, "symbol": "CHECKBOX.findall" } ] } },
+        { "title": "完成条件", "text": "status 返回 0（没有 problem，也没有过时活文档）才算这张票真正结束；结果回到 Agent，下一张票从新的 frontier 取。", "nodes": ["agent"], "edges": ["e-cli-report"],
+          "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/SKILL.md", "line": 115, "symbol": "The map is healthy" } ] } }
+      ]
+    }
+  ],
+  "docDrift": [
+    {
+      "doc": { "path": "project-map/references/formats.md", "line": 7, "symbol": "in this order" },
+      "claim": "MAP.md 的六个必需章节要按规定顺序排列",
+      "actual": "check_map 只检查每个章节是否存在，不检查顺序；乱序的 MAP.md 也能通过 status",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 101, "symbol": "for name in SECTIONS" } ] }
+    },
+    {
+      "doc": { "path": "project-map/references/formats.md", "line": 28, "symbol": "**Verified**" },
+      "claim": "Verified 列填空或填一个提交号",
+      "actual": "非 git 目录下 Verified 必须是 YYYY-MM-DD 日期，填提交号会报 problem；README 和 formats.md 都没写这一点",
+      "evidence": { "level": "confirmed", "refs": [ { "path": "project-map/scripts/project_map.py", "line": 186, "symbol": "Verified must be a date" } ] }
+    }
+  ],
+  "openQuestions": [
+    { "question": "status 是否真的接进了 hook 或 CI？", "needs": "使用该 skill 的项目里的 hook 配置或 CI 配置；本仓库只在 README 中说\"可以接进\"，没有任何 hook 文件", "related": ["cli"] },
+    { "question": "多个会话并行时，claimed_by 的认领是否出现过冲突？", "needs": "并行会话的记录，或在两个会话里同时认领同一张票的复现", "related": ["e-agent-mapdir", "frontier"] },
+    { "question": "Agent 是否总是按 SKILL.md 在会话开始先跑 status？", "needs": "实际会话记录；脚本无法强制这一步", "related": ["skill", "agent"] }
+  ]
+}

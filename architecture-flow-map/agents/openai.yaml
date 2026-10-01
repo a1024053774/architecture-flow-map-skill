@@ -1,0 +1,7 @@
+interface:
+  display_name: "Architecture Flow Map"
+  short_description: "Map how a codebase actually runs, with scenarios replayed step by step and every reference checked"
+  default_prompt: "Use $architecture-flow-map to build an interactive map of how this project runs, with its key scenarios replayed step by step."
+
+policy:
+  allow_implicit_invocation: true
