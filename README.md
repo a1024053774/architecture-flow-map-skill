@@ -62,12 +62,14 @@ python3 architecture-flow-map/scripts/build_map.py --root <仓库> --data <目�
 
 ```text
 architecture-flow-map/
-  SKILL.md                  # Agent 的工作流程和证据规则
-  references/map-schema.md  # map.json 格式
-  assets/viewer.html        # 查看器模板（无外部依赖）
-  scripts/build_map.py      # 校验并生成 HTML
-examples/project-map/       # 对 project-map-skill 的完整示例
-tests/build_map_e2e.sh      # 构建脚本的验收测试
+  SKILL.md                       # 不可违反的核心、证据规则和流程概要
+  references/tracing.md          # 第 1–4 步：摸底、选全局节点、挑场景、沿代码追踪
+  references/build-and-check.md  # 第 6–8 步：构建、浏览器自检、汇报；更新已有地图
+  references/map-schema.md       # map.json 格式
+  assets/viewer.html             # 查看器模板（无外部依赖）
+  scripts/build_map.py           # 校验并生成 HTML
+examples/project-map/            # 对 project-map-skill 的完整示例
+tests/build_map_e2e.sh           # 构建脚本的验收测试
 ```
 
 ## 验证
@@ -77,4 +79,4 @@ bash tests/build_map_e2e.sh
 python3 architecture-flow-map/scripts/build_map.py --root ../project-map-skill --data examples/project-map/map.json --out examples/project-map/flow-map.html
 ```
 
-第一条在临时目录里搭一个小仓库，确认正确的地图能构建，19 种错误地图（路径不存在、符号不在所写的行、推断没写依据、实测没写结果、步骤引用了不存在的连线等）都被拒绝，失败的构建不会覆盖已有的 HTML，地图文字里的 `</script>` 也无法提前结束数据块，过长的连线说明会得到警告。第二条重建示例，需要把 [project-map-skill](https://github.com/a1024053774/project-map-skill) 检出在同级目录，示例对应它的 `31220c1` 提交。
+第一条在临时目录里搭一个小仓库，确认正确的地图能构建，19 种错误地图（路径不存在、符号不在所写的行、推断没写依据、实测没写结果、步骤引用了不存在的连线等）都被拒绝，失败的构建不会覆盖已有的 HTML，地图文字里的 `</script>` 也无法提前结束数据块，过长的连线说明会得到警告。第二条重建示例，需要把 [project-map-skill](https://github.com/a1024053774/project-map-skill) 检出在同级目录，示例对应它的 `c16779a` 提交。

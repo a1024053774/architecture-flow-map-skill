@@ -190,7 +190,7 @@ details li { margin-bottom: 4px; }
  "title": "project-map-skill 运行地图",
  "locale": "zh-CN",
  "generatedAt": "2026-10-01",
- "commit": "31220c1",
+ "commit": "c16779a",
  "summary": "这个项目由两半组成：一半是给 Agent 读的流程规则（SKILL.md），规定谁在什么时候建票、认领、关票；另一半是唯一的可执行代码 project_map.py，它只有 init 和 status 两个命令。脚本从不写票据，只负责建骨架和检查：status 先检查 MAP.md 与 tickets/*.md 的结构，再用 git（或修改时间）判断活文档是否过时，最后算出可领取的 frontier，用退出码 0/1 表示是否健康。所以票据的状态变化全部由 Agent 或用户手写完成，脚本只在事后核对。",
  "lanes": [
   {
@@ -230,12 +230,12 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/SKILL.md",
-      "line": 32,
+      "line": 40,
       "symbol": "project_map.py status"
      },
      {
       "path": "project-map/SKILL.md",
-      "line": 49,
+      "line": 56,
       "symbol": "claimed_by"
      }
     ]
@@ -252,12 +252,12 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/SKILL.md",
-      "line": 30,
+      "line": 38,
       "symbol": "## Session start"
      },
      {
       "path": "project-map/SKILL.md",
-      "line": 58,
+      "line": 65,
       "symbol": "## Pipeline"
      }
     ]
@@ -299,7 +299,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 262,
+      "line": 265,
       "symbol": "def main"
      }
     ]
@@ -314,7 +314,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 262,
+        "line": 265,
         "symbol": "def main"
        }
       ]
@@ -329,7 +329,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 247,
+        "line": 250,
         "symbol": "def cmd_init"
        }
       ]
@@ -344,7 +344,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 225,
+        "line": 228,
         "symbol": "def cmd_status"
        }
       ]
@@ -434,7 +434,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 191,
+      "line": 194,
       "symbol": "def check_docs"
      }
     ]
@@ -449,7 +449,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 191,
+        "line": 194,
         "symbol": "def check_docs"
        }
       ]
@@ -516,7 +516,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 215,
+      "line": 218,
       "symbol": "def frontier"
      }
     ]
@@ -542,7 +542,7 @@ details li { margin-bottom: 4px; }
      },
      {
       "path": "project-map/SKILL.md",
-      "line": 17,
+      "line": 25,
       "symbol": "## Layout"
      }
     ]
@@ -567,7 +567,7 @@ details li { margin-bottom: 4px; }
      },
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 178,
+      "line": 180,
       "symbol": "root.glob(c)"
      }
     ]
@@ -603,12 +603,12 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/SKILL.md",
-      "line": 32,
+      "line": 40,
       "symbol": "project_map.py status"
      },
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 264,
+      "line": 267,
       "symbol": "choices=(\"status\", \"init\")"
      }
     ]
@@ -625,7 +625,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/SKILL.md",
-      "line": 38,
+      "line": 45,
       "symbol": "## Tickets"
      }
     ]
@@ -644,12 +644,12 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/SKILL.md",
-      "line": 49,
+      "line": 56,
       "symbol": "claimed_by"
      },
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 257,
+      "line": 260,
       "symbol": "shutil.copyfile"
      }
     ]
@@ -683,7 +683,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 268,
+      "line": 271,
       "symbol": "cmd_init(root)"
      }
     ]
@@ -700,7 +700,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 268,
+      "line": 271,
       "symbol": "cmd_status(root)"
      }
     ]
@@ -717,7 +717,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 252,
+      "line": 255,
       "symbol": "OTHER_LEDGERS"
      }
     ]
@@ -734,7 +734,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 257,
+      "line": 260,
       "symbol": "TEMPLATES / \"MAP.md\""
      }
     ]
@@ -751,7 +751,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 256,
+      "line": 259,
       "symbol": "mkdir(parents=True)"
      }
     ]
@@ -768,7 +768,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 226,
+      "line": 229,
       "symbol": "check_map(root)"
      }
     ]
@@ -854,7 +854,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 229,
+      "line": 232,
       "symbol": "check_docs(root, text)"
      }
     ]
@@ -871,7 +871,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 194,
+      "line": 197,
       "symbol": "living_docs(text)"
      }
     ]
@@ -888,7 +888,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 207,
+      "line": 210,
       "symbol": "stale_git if use_git else stale_mtime"
      }
     ]
@@ -905,7 +905,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 207,
+      "line": 210,
       "symbol": "stale_git if use_git else stale_mtime"
      }
     ]
@@ -922,7 +922,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 193,
+      "line": 196,
       "symbol": "rev-parse\", \"--is-inside-work-tree"
      }
     ]
@@ -962,7 +962,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 201,
+      "line": 204,
       "symbol": "doc_path.is_file()"
      }
     ]
@@ -979,7 +979,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 181,
+      "line": 184,
       "symbol": "st_mtime"
      }
     ]
@@ -996,7 +996,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 235,
+      "line": 238,
       "symbol": "frontier(tickets)"
      }
     ]
@@ -1013,12 +1013,12 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 244,
+      "line": 247,
       "symbol": "return 1 if problems or stale else 0"
      },
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 272,
+      "line": 275,
       "symbol": "raise SystemExit(main())"
      }
     ]
@@ -1130,7 +1130,7 @@ details li { margin-bottom: 4px; }
      },
      {
       "path": "project-map/SKILL.md",
-      "line": 56,
+      "line": 63,
       "symbol": "supersedes"
      }
     ]
@@ -1186,8 +1186,8 @@ details li { margin-bottom: 4px; }
       "symbol": "def stale_git"
      },
      {
-      "path": "project-map/SKILL.md",
-      "line": 107,
+      "path": "project-map/references/formats.md",
+      "line": 30,
       "symbol": "Without git"
      }
     ]
@@ -1217,7 +1217,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 267,
+        "line": 270,
         "symbol": "expanduser().resolve()"
        }
       ]
@@ -1241,7 +1241,7 @@ details li { margin-bottom: 4px; }
         "refs": [
          {
           "path": "project-map/scripts/project_map.py",
-          "line": 250,
+          "line": 253,
           "symbol": "already exists"
          }
         ]
@@ -1255,7 +1255,7 @@ details li { margin-bottom: 4px; }
         "refs": [
          {
           "path": "project-map/scripts/project_map.py",
-          "line": 254,
+          "line": 257,
           "symbol": "another ledger exists"
          }
         ]
@@ -1267,7 +1267,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 249,
+        "line": 252,
         "symbol": "map_dir.exists()"
        }
       ]
@@ -1291,12 +1291,12 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 256,
+        "line": 259,
         "symbol": "mkdir(parents=True)"
        },
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 257,
+        "line": 260,
         "symbol": "shutil.copyfile"
        }
       ]
@@ -1318,12 +1318,12 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 258,
+        "line": 261,
         "symbol": "created"
        },
        {
         "path": "project-map/SKILL.md",
-        "line": 36,
+        "line": 43,
         "symbol": "fill in the destination"
        }
       ]
@@ -1355,7 +1355,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/SKILL.md",
-        "line": 32,
+        "line": 40,
         "symbol": "project_map.py status"
        }
       ]
@@ -1388,7 +1388,7 @@ details li { margin-bottom: 4px; }
          },
          {
           "path": "project-map/scripts/project_map.py",
-          "line": 228,
+          "line": 231,
           "symbol": "if text:"
          }
         ]
@@ -1479,7 +1479,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 229,
+        "line": 232,
         "symbol": "check_docs(root, text)"
        }
       ]
@@ -1502,12 +1502,12 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 221,
+        "line": 224,
         "symbol": "not t[\"claimed_by\"]"
        },
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 239,
+        "line": 242,
         "symbol": "claimed = "
        }
       ]
@@ -1527,7 +1527,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 244,
+        "line": 247,
         "symbol": "return 1 if problems or stale else 0"
        }
       ]
@@ -1579,12 +1579,12 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 199,
+        "line": 202,
         "symbol": "outside the project root"
        },
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 205,
+        "line": 208,
         "symbol": "no covers paths"
        }
       ]
@@ -1603,7 +1603,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 193,
+        "line": 196,
         "symbol": "use_git"
        }
       ]
@@ -1699,7 +1699,7 @@ details li { margin-bottom: 4px; }
         "refs": [
          {
           "path": "project-map/scripts/project_map.py",
-          "line": 186,
+          "line": 189,
           "symbol": "Verified must be a date"
          }
         ]
@@ -1711,7 +1711,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 187,
+        "line": 190,
         "symbol": "st_mtime > reviewed"
        }
       ]
@@ -1738,12 +1738,12 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 231,
+        "line": 234,
         "symbol": "Stale living docs"
        },
        {
         "path": "project-map/SKILL.md",
-        "line": 105,
+        "line": 86,
         "symbol": "Stale check before done"
        }
       ]
@@ -1760,7 +1760,7 @@ details li { margin-bottom: 4px; }
    "steps": [
     {
      "title": "按规则选票",
-     "text": "Agent 读 SKILL.md 第 4 步：一个会话只做一张，从 frontier 里取。",
+     "text": "Agent 读流水线第 4 步（SKILL.md 链到 references/pipeline.md）：一个会话只做一张，从 frontier 里取。",
      "nodes": [
       "agent",
       "skill",
@@ -1773,8 +1773,8 @@ details li { margin-bottom: 4px; }
       "level": "confirmed",
       "refs": [
        {
-        "path": "project-map/SKILL.md",
-        "line": 83,
+        "path": "project-map/references/pipeline.md",
+        "line": 28,
         "symbol": "One ticket per session"
        }
       ]
@@ -1806,7 +1806,7 @@ details li { margin-bottom: 4px; }
         "refs": [
          {
           "path": "project-map/scripts/project_map.py",
-          "line": 221,
+          "line": 224,
           "symbol": "not t[\"claimed_by\"]"
          }
         ]
@@ -1818,12 +1818,12 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/SKILL.md",
-        "line": 49,
+        "line": 56,
         "symbol": "claimed_by"
        },
        {
         "path": "project-map/scripts/project_map.py",
-        "line": 239,
+        "line": 242,
         "symbol": "claimed = "
        }
       ]
@@ -1840,8 +1840,8 @@ details li { margin-bottom: 4px; }
       "note": "只有 SKILL.md 规定这些步骤；project_map.py 中没有任何读取测试结果或工件的代码。",
       "refs": [
        {
-        "path": "project-map/SKILL.md",
-        "line": 86,
+        "path": "project-map/references/pipeline.md",
+        "line": 31,
         "symbol": "Make the agreed end-to-end check fail"
        }
       ]
@@ -1866,8 +1866,8 @@ details li { margin-bottom: 4px; }
       "level": "confirmed",
       "refs": [
        {
-        "path": "project-map/SKILL.md",
-        "line": 91,
+        "path": "project-map/references/pipeline.md",
+        "line": 36,
         "symbol": "Close with the resolution"
        },
        {
@@ -1936,7 +1936,7 @@ details li { margin-bottom: 4px; }
       "refs": [
        {
         "path": "project-map/SKILL.md",
-        "line": 115,
+        "line": 96,
         "symbol": "The map is healthy"
        }
       ]
@@ -1986,7 +1986,7 @@ details li { margin-bottom: 4px; }
     "refs": [
      {
       "path": "project-map/scripts/project_map.py",
-      "line": 186,
+      "line": 189,
       "symbol": "Verified must be a date"
      }
     ]
